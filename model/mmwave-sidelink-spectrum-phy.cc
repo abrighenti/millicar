@@ -155,6 +155,16 @@ MmWaveSidelinkSpectrumPhy::SetMobility (Ptr<MobilityModel> m)
   m_mobility = m;
 }
 
+bool
+MmWaveSidelinkSpectrumPhy::IsChannelIdle ()
+{
+  if (m_state== IDLE){
+    return true;
+  }else{
+    return false;
+  }
+}
+
 Ptr<MobilityModel>
 MmWaveSidelinkSpectrumPhy::GetMobility ()
 {
@@ -257,6 +267,7 @@ MmWaveSidelinkSpectrumPhy::StartRx (Ptr<SpectrumSignalParameters> params)
     {
       // other type of signal that needs to be counted as interference
       m_interferenceData->AddSignal (params->psd, params->duration);
+      ChangeState (RX_INTERFERENCE);
     }
 }
 
@@ -271,16 +282,20 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
       // If there are other intereferent devices that transmit in the same slot, the current
       // device simply does not consider the signal and goes on with the transmission. The code does not raise any errors since
       // otherwise we are not able to study scenarios where interference could be an issue.
-      break;
+      //break;
     case RX_CTRL:
-      NS_FATAL_ERROR ("Cannot receive control in data period");
-      break;
+      //NS_FATAL_ERROR ("Cannot receive control in data period");
+      //break;
     case RX_DATA:
       // If this device is in the RX_DATA state and another call to StartRx is
       // triggered, it means that multiple concurrent signals are being received.
       // In this case, we assume that the device will synchronize with the first
       // received signal, while the other will act as interferers
       m_interferenceData->AddSignal (params->psd, params->duration);
+      
+      //COMMENT BY ALESSANDRO: in case TX, RX_CTRL, RX_DATA comments talk about interferences. Thus I removed the break(s) and put a 
+      //changeState to RX_interference here
+      ChangeState (RX_INTERFERENCE);
       break;
     case IDLE:
       {
@@ -326,6 +341,9 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
           NS_LOG_LOGIC (this << " not in sync with this signal (rnti="
               << params->destinationRnti  << ", rnti of the device="
               << thisDeviceRnti << ")");
+
+          //Signal is not for this device: thus interference
+          ChangeState (RX_INTERFERENCE);
         }
         //m_rxControlMessageList.insert (m_rxControlMessageList.end (), params->ctrlMsgList.begin (), params->ctrlMsgList.end ());
       }
@@ -442,6 +460,15 @@ MmWaveSidelinkSpectrumPhy::EndRxData ()
   m_state = IDLE;
   m_rxTransportBlock.clear ();
   //m_rxControlMessageList.clear ();
+}
+
+//method to end rx interference
+void
+MmWaveSidelinkSpectrumPhy::EndRxInterference ()
+{
+  NS_ASSERT (m_state == RX_INTERFERENCE);
+
+  m_state = IDLE;
 }
 
 // void

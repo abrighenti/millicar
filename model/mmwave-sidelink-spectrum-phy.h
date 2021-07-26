@@ -99,7 +99,8 @@ public:
     IDLE = 0,
     TX,
     RX_DATA,
-    RX_CTRL
+    RX_CTRL,
+    RX_INTERFERENCE
   };
 
   /**
@@ -140,6 +141,13 @@ public:
    * @return a Ptr to the associated MobilityModel instance
    */
   Ptr<MobilityModel> GetMobility ();
+
+  /**
+   * Get status of channel
+   *
+   * @return True if channel is IDLE, false otherwise
+   */
+  bool IsChannelIdle ();
 
   /**
    * Set the channel attached to this device.
@@ -272,6 +280,7 @@ private:
   /// End receive data function
   void EndRxData ();
   //void EndRxCtrl ();
+  void EndRxInterference ();
 
   Ptr<mmwave::mmWaveInterference> m_interferenceData; ///< the data interference
   Ptr<MobilityModel> m_mobility; ///< the modility model
