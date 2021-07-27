@@ -282,10 +282,10 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
       // If there are other intereferent devices that transmit in the same slot, the current
       // device simply does not consider the signal and goes on with the transmission. The code does not raise any errors since
       // otherwise we are not able to study scenarios where interference could be an issue.
-      //break;
+      break;
     case RX_CTRL:
-      //NS_FATAL_ERROR ("Cannot receive control in data period");
-      //break;
+      NS_FATAL_ERROR ("Cannot receive control in data period");
+      break;
     case RX_DATA:
       // If this device is in the RX_DATA state and another call to StartRx is
       // triggered, it means that multiple concurrent signals are being received.
@@ -293,10 +293,50 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
       // received signal, while the other will act as interferers
       m_interferenceData->AddSignal (params->psd, params->duration);
       
-      //COMMENT BY ALESSANDRO: in case TX, RX_CTRL, RX_DATA comments talk about interferences. Thus I removed the break(s) and put a 
-      //changeState to RX_interference here
-      ChangeState (RX_INTERFERENCE);
       break;
+    case RX_INTERFERENCE:
+      // check if the packet is for this device, otherwise
+      // consider it only for the interference
+      m_interferenceData->AddSignal (params->psd, params->duration);
+      uint16_t thisDeviceRnti =
+        DynamicCast<MmWaveVehicularNetDevice>(m_device)->GetMac()->GetRnti();
+      if(thisDeviceRnti == params->destinationRnti)
+      {
+        // this is a useful signal
+        m_interferenceData->StartRx (params->psd);
+        m_firstRxStart = Simulator::Now ();
+        m_firstRxDuration = params->duration;
+        NS_LOG_LOGIC (this << " scheduling EndRx with delay " << params->duration.GetSeconds () << "s");
+
+        m_endRxDataEvent = Simulator::Schedule (params->duration, &MmWaveSidelinkSpectrumPhy::EndRxData, this);
+        /*if (m_rxTransportBlock.empty ())
+          {
+            NS_ASSERT (m_state == IDLE);
+            // first transmission, i.e., we're IDLE and we start RX
+            m_firstRxStart = Simulator::Now ();
+            m_firstRxDuration = params->duration;
+            NS_LOG_LOGIC (this << " scheduling EndRx with delay " << params->duration.GetSeconds () << "s");
+
+            m_endRxDataEvent = Simulator::Schedule (params->duration, &MmWaveSidelinkSpectrumPhy::EndRxData, this);
+          }
+        else
+          {
+            NS_ASSERT (m_state == RX_DATA);
+            // sanity check: if there are multiple RX events, they
+            // should occur at the same time and have the same
+            // duration, otherwise the interference calculation
+            // won't be correct
+            NS_ASSERT ((m_firstRxStart == Simulator::Now ()) && (m_firstRxDuration == params->duration));
+          }
+        */
+        ChangeState (RX_DATA);
+        if (params->packetBurst && !params->packetBurst->GetPackets ().empty ())
+          {
+            TbInfo_t tbInfo = {params->packetBurst, params->size, params->mcs, params->numSym, params->senderRnti, params->rbBitmap};
+            m_rxTransportBlock.push_back (tbInfo);
+          }
+      }
+    break;
     case IDLE:
       {
         // check if the packet is for this device, otherwise
@@ -344,6 +384,12 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
 
           //Signal is not for this device: thus interference
           ChangeState (RX_INTERFERENCE);
+          // first transmission, i.e., we're IDLE and we start RX
+          m_firstRxStart = Simulator::Now ();
+          m_firstRxDuration = params->duration;
+          NS_LOG_LOGIC (this << " scheduling EndRxInterference with delay " << params->duration.GetSeconds () << "s");
+
+          m_endRxDataEvent = Simulator::Schedule (params->duration, &MmWaveSidelinkSpectrumPhy::EndRxInterference, this);
         }
         //m_rxControlMessageList.insert (m_rxControlMessageList.end (), params->ctrlMsgList.begin (), params->ctrlMsgList.end ());
       }
@@ -508,6 +554,7 @@ MmWaveSidelinkSpectrumPhy::StartTxDataFrames (Ptr<PacketBurst> pb,
     {
     case RX_DATA:
     case RX_CTRL:
+    case RX_INTERFERENCE:
       NS_FATAL_ERROR ("Cannot transmit while receiving");
       break;
     case TX:
