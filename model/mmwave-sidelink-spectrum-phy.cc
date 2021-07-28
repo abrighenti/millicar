@@ -295,6 +295,7 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
       
       break;
     case RX_INTERFERENCE:
+    {
       // check if the packet is for this device, otherwise
       // consider it only for the interference
       m_interferenceData->AddSignal (params->psd, params->duration);
@@ -336,6 +337,7 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
             m_rxTransportBlock.push_back (tbInfo);
           }
       }
+    }
     break;
     case IDLE:
       {
@@ -512,7 +514,7 @@ MmWaveSidelinkSpectrumPhy::EndRxData ()
 void
 MmWaveSidelinkSpectrumPhy::EndRxInterference ()
 {
-  NS_ASSERT (m_state == RX_INTERFERENCE);
+  NS_ASSERT (m_state = RX_INTERFERENCE);
 
   m_state = IDLE;
 }

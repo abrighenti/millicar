@@ -51,6 +51,11 @@ public:
    */
   virtual void PrepareForReception (uint16_t rnti) = 0;
 
+  /**
+   * \brief Called by the upper layer to check if channel is idle
+   */
+  virtual bool IsChannelIdle () = 0;
+
 };
 
 class MmWaveSidelinkPhySapUser

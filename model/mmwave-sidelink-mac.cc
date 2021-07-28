@@ -146,6 +146,7 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
 
   NS_ASSERT_MSG (m_rnti != 0, "First set the RNTI");
   NS_ASSERT_MSG (!m_sfAllocInfo.empty (), "First set the scheduling pattern");
+
   if(m_sfAllocInfo [timingInfo.m_slotNum] == m_rnti) // check if this slot is associated to the user who required it
   {
     mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
@@ -161,12 +162,17 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
         // discard the tranmission opportunity and go to the next transmission
         continue;
       }
+      //here: change to "check if channel idle"
+      if(m_phySapProvider->IsChannelIdle()){
+        // otherwise, forward the packet to the PHY
+        Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
+        pb->AddPacket (txBuffer->second.front ().pdu);
+        m_phySapProvider->AddTransportBlock (pb, *it);
+        txBuffer->second.pop_front ();
+      }else{
+        NS_LOG_INFO ("Channel Busy");
+      }
 
-      // otherwise, forward the packet to the PHY
-      Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
-      pb->AddPacket (txBuffer->second.front ().pdu);
-      m_phySapProvider->AddTransportBlock (pb, *it);
-      txBuffer->second.pop_front ();
     }
   }
   else if (m_sfAllocInfo[timingInfo.m_slotNum] != 0) // if the slot is assigned to another device, prepare for reception
