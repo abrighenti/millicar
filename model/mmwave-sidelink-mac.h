@@ -207,6 +207,7 @@ private:
   Ptr<mmwave::MmWavePhyMacCommon> m_phyMacConfig; //!< PHY and MAC configuration pointer
   Ptr<mmwave::MmWaveAmc> m_amc; //!< pointer to AMC instance
   bool m_useAmc; //!< set to true to use adaptive modulation and coding
+  bool m_useCSMA; //!< set to true to use millicar in CSMA mode. Otherwise millicar is used in preassigned slots mode
   uint8_t m_mcs; //!< the MCS used to transmit the packets if AMC is not used
   uint16_t m_rnti; //!< radio network temporary identifier
   std::vector<uint16_t> m_sfAllocInfo; //!< defines the subframe allocation, m_sfAllocInfo[i] = RNTI of the device scheduled for slot i

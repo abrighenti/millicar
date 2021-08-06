@@ -292,7 +292,6 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
       // In this case, we assume that the device will synchronize with the first
       // received signal, while the other will act as interferers
       m_interferenceData->AddSignal (params->psd, params->duration);
-      
       break;
     case RX_INTERFERENCE:
     {

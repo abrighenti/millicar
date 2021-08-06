@@ -95,6 +95,11 @@ MmWaveSidelinkMac::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&MmWaveSidelinkMac::m_useAmc),
                    MakeBooleanChecker ())
+    .AddAttribute ("UseCSMA",
+                   "Set to true to use millicar in CSMA mode.",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&MmWaveSidelinkMac::m_useCSMA),
+                   MakeBooleanChecker ())
     .AddTraceSource ("SchedulingInfo",
                      "Information regarding the scheduling.",
                      MakeTraceSourceAccessor (&MmWaveSidelinkMac::m_schedulingTrace),
@@ -147,8 +152,7 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
   NS_ASSERT_MSG (m_rnti != 0, "First set the RNTI");
   NS_ASSERT_MSG (!m_sfAllocInfo.empty (), "First set the scheduling pattern");
 
-  if(m_sfAllocInfo [timingInfo.m_slotNum] == m_rnti) // check if this slot is associated to the user who required it
-  {
+  if(m_useCSMA){
     mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
 
     // associate slot alloc info and pdu
@@ -162,7 +166,6 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
         // discard the tranmission opportunity and go to the next transmission
         continue;
       }
-      //here: change to "check if channel idle"
       if(m_phySapProvider->IsChannelIdle()){
         // otherwise, forward the packet to the PHY
         Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
@@ -170,19 +173,42 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
         m_phySapProvider->AddTransportBlock (pb, *it);
         txBuffer->second.pop_front ();
       }else{
-        NS_LOG_INFO ("Channel Busy");
+        NS_LOG_INFO ("Prepare for reception from rnti " << m_sfAllocInfo[timingInfo.m_slotNum]);
+        m_phySapProvider->PrepareForReception (m_sfAllocInfo[timingInfo.m_slotNum]);
       }
-
     }
-  }
-  else if (m_sfAllocInfo[timingInfo.m_slotNum] != 0) // if the slot is assigned to another device, prepare for reception
-  {
-    NS_LOG_INFO ("Prepare for reception from rnti " << m_sfAllocInfo[timingInfo.m_slotNum]);
-    m_phySapProvider->PrepareForReception (m_sfAllocInfo[timingInfo.m_slotNum]);
-  }
-  else // the slot is not assigned to any user
-  {
-    NS_LOG_INFO ("Empty slot");
+  }else{
+    if(m_sfAllocInfo [timingInfo.m_slotNum] == m_rnti) // check if this slot is associated to the user who required it
+    {
+      mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
+
+      // associate slot alloc info and pdu
+      for (auto it = allocationInfo.m_ttiAllocInfo.begin(); it != allocationInfo.m_ttiAllocInfo.end (); it++)
+      {
+        // retrieve the tx buffer corresponding to the assigned destination
+        auto txBuffer = m_txBufferMap.find (it->m_rnti); // the destination RNTI
+
+        if (txBuffer == m_txBufferMap.end () || txBuffer->second.empty ())
+        {
+          // discard the tranmission opportunity and go to the next transmission
+          continue;
+        }
+        // otherwise, forward the packet to the PHY
+        Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
+        pb->AddPacket (txBuffer->second.front ().pdu);
+        m_phySapProvider->AddTransportBlock (pb, *it);
+        txBuffer->second.pop_front ();
+      }
+    }
+    else if (m_sfAllocInfo[timingInfo.m_slotNum] != 0) // if the slot is assigned to another device, prepare for reception
+    {
+      NS_LOG_INFO ("Prepare for reception from rnti " << m_sfAllocInfo[timingInfo.m_slotNum]);
+      m_phySapProvider->PrepareForReception (m_sfAllocInfo[timingInfo.m_slotNum]);
+    }
+    else // the slot is not assigned to any user
+    {
+      NS_LOG_INFO ("Empty slot");
+    }
   }
 
 }
