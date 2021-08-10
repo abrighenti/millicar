@@ -172,10 +172,12 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
         pb->AddPacket (txBuffer->second.front ().pdu);
         m_phySapProvider->AddTransportBlock (pb, *it);
         txBuffer->second.pop_front ();
-      }else{
-        NS_LOG_INFO ("Prepare for reception from rnti " << m_sfAllocInfo[timingInfo.m_slotNum]);
-        m_phySapProvider->PrepareForReception (m_sfAllocInfo[timingInfo.m_slotNum]);
-      }
+      }/*else{
+        //se il segnale è per me allora ricevo, sennò sto fermo
+        NS_LOG_INFO ("Prepare for reception from rnti " << it->m_rnti);
+        m_phySapProvider->PrepareForReception (it->m_rnti);
+        //m_phySapProvider->PrepareForReception (m_sfAllocInfo[timingInfo.m_slotNum]);
+      }*/
     }
   }else{
     if(m_sfAllocInfo [timingInfo.m_slotNum] == m_rnti) // check if this slot is associated to the user who required it
