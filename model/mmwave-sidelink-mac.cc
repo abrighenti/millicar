@@ -151,7 +151,6 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
 
   NS_ASSERT_MSG (m_rnti != 0, "First set the RNTI");
   NS_ASSERT_MSG (!m_sfAllocInfo.empty (), "First set the scheduling pattern");
-
   if(m_useCSMA){
     mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
 
@@ -166,18 +165,19 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
         // discard the tranmission opportunity and go to the next transmission
         continue;
       }
+      m_phySapProvider->PrepareForReception (it->m_rnti);
       if(m_phySapProvider->IsChannelIdle()){
         // otherwise, forward the packet to the PHY
         Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
         pb->AddPacket (txBuffer->second.front ().pdu);
         m_phySapProvider->AddTransportBlock (pb, *it);
         txBuffer->second.pop_front ();
-      }/*else{
+      }else{
         //se il segnale è per me allora ricevo, sennò sto fermo
         NS_LOG_INFO ("Prepare for reception from rnti " << it->m_rnti);
         m_phySapProvider->PrepareForReception (it->m_rnti);
         //m_phySapProvider->PrepareForReception (m_sfAllocInfo[timingInfo.m_slotNum]);
-      }*/
+      }
     }
   }else{
     if(m_sfAllocInfo [timingInfo.m_slotNum] == m_rnti) // check if this slot is associated to the user who required it
