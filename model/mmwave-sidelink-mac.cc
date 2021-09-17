@@ -25,6 +25,7 @@
 #include "ns3/log.h"
 #include "ns3/uinteger.h"
 #include "ns3/boolean.h"
+#include "ns3/random-variable-stream.h"
 
 namespace ns3 {
 
@@ -129,6 +130,8 @@ MmWaveSidelinkMac::MmWaveSidelinkMac (Ptr<mmwave::MmWavePhyMacCommon> pmc)
   // initialize the scheduling patter
   std::vector<uint16_t> pattern (m_phyMacConfig->GetSlotsPerSubframe (), 0);
   m_sfAllocInfo = pattern;
+  
+  Simulator::Schedule (m_phyMacConfig->GetSymbolPeriod () / 2, &MmWaveSidelinkMac::CheckChannelState, this);
 }
 
 MmWaveSidelinkMac::~MmWaveSidelinkMac (void)
@@ -145,13 +148,27 @@ MmWaveSidelinkMac::DoDispose ()
 }
 
 void
+MmWaveSidelinkMac::CheckChannelState (void)
+{
+  NS_LOG_FUNCTION (this);
+  m_isChannelIdle = m_phySapProvider->IsChannelIdle ();
+}
+
+void
 MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
 {
   NS_LOG_FUNCTION (this);
 
   NS_ASSERT_MSG (m_rnti != 0, "First set the RNTI");
   NS_ASSERT_MSG (!m_sfAllocInfo.empty (), "First set the scheduling pattern");
+  
   if(m_useCSMA){
+
+    if (m_rnti % 2 == 0)
+    {
+      m_phySapProvider->PrepareForReception (m_rnti - 1);
+    }
+
     mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
 
     // associate slot alloc info and pdu
@@ -165,17 +182,27 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
         // discard the tranmission opportunity and go to the next transmission
         continue;
       }
-      m_phySapProvider->PrepareForReception (it->m_rnti);
-      if(m_phySapProvider->IsChannelIdle()){
+      if(m_isChannelIdle){
         // otherwise, forward the packet to the PHY
         Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
         pb->AddPacket (txBuffer->second.front ().pdu);
         m_phySapProvider->AddTransportBlock (pb, *it);
         txBuffer->second.pop_front ();
+        
+        Simulator::Schedule (m_phyMacConfig->GetSymbolPeriod () / 2, 
+                             &MmWaveSidelinkMac::CheckChannelState, this);
       }else{
         //se il segnale è per me allora ricevo, sennò sto fermo
         NS_LOG_INFO ("Prepare for reception from rnti " << it->m_rnti);
-        m_phySapProvider->PrepareForReception (it->m_rnti);
+        
+        // wait for a random time before checking the channel state again
+        Ptr<UniformRandomVariable> rv = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (0), 
+                                                                                           "Max", DoubleValue (1));
+        uint8_t backoff = rv->GetValue (); 
+        NS_LOG_DEBUG ("Wait for " << +backoff << " slots before checking the channel state again");
+        Simulator::Schedule (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod () / 2, 
+                             &MmWaveSidelinkMac::CheckChannelState, this);
+        // m_phySapProvider->PrepareForReception (it->m_rnti);
         //m_phySapProvider->PrepareForReception (m_sfAllocInfo[timingInfo.m_slotNum]);
       }
     }

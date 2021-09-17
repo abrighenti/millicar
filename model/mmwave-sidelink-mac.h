@@ -199,7 +199,12 @@ private:
   * \returns updated iterator to the Buffer Status Report map
   */
   std::map<uint8_t, LteMacSapProvider::ReportBufferStatusParameters>::iterator UpdateBufferStatusReport (uint8_t lcid, uint32_t assignedBytes);
-
+  
+  /**
+  * \brief Checks the channel state and updates m_isChannelIdle 
+  */
+  void CheckChannelState (void);
+  
   MmWaveSidelinkPhySapUser* m_phySapUser; //!< Sidelink PHY SAP user
   MmWaveSidelinkPhySapProvider* m_phySapProvider; //!< Sidelink PHY SAP provider
   LteMacSapProvider* m_macSapProvider; //!< Sidelink MAC SAP provider
@@ -215,6 +220,7 @@ private:
   std::map<uint16_t, std::vector<int>> m_slCqiReported; //!< map containing the <RNTI, CQI> pairs
   Callback<void, Ptr<Packet> > m_forwardUpCallback; //!< upward callback to the NetDevice
   std::map<uint8_t, LteMacSapProvider::ReportBufferStatusParameters> m_bufferStatusReportMap; //!< map containing the <LCID, buffer status in bits> pairs
+  bool m_isChannelIdle; //!< used to track the channel state
 
   // trace sources
   TracedCallback<SlSchedulingCallback> m_schedulingTrace; //!< trace source returning information regarding the scheduling
