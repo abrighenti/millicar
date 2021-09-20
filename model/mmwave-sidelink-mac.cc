@@ -162,51 +162,58 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
   NS_ASSERT_MSG (m_rnti != 0, "First set the RNTI");
   NS_ASSERT_MSG (!m_sfAllocInfo.empty (), "First set the scheduling pattern");
   
-  if(m_useCSMA){
+  if(m_useCSMA)
+  {
 
+    // TODO configure beamforming in a better way
+    // this works because in our example devices with even rnti (2 and 4) are 
+    // the receivers, while those with odd rnti are the transmitter
     if (m_rnti % 2 == 0)
     {
       m_phySapProvider->PrepareForReception (m_rnti - 1);
     }
 
-    mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
 
-    // associate slot alloc info and pdu
-    for (auto it = allocationInfo.m_ttiAllocInfo.begin(); it != allocationInfo.m_ttiAllocInfo.end (); it++)
+    if(m_isChannelIdle)
     {
-      // retrieve the tx buffer corresponding to the assigned destination
-      auto txBuffer = m_txBufferMap.find (it->m_rnti); // the destination RNTI
-
-      if (txBuffer == m_txBufferMap.end () || txBuffer->second.empty ())
+      mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
+      
+      // associate slot alloc info and pdu
+      for (auto it = allocationInfo.m_ttiAllocInfo.begin(); it != allocationInfo.m_ttiAllocInfo.end (); it++)
       {
-        // discard the tranmission opportunity and go to the next transmission
-        continue;
-      }
-      if(m_isChannelIdle){
+        // retrieve the tx buffer corresponding to the assigned destination
+        auto txBuffer = m_txBufferMap.find (it->m_rnti); // the destination RNTI
+
+        if (txBuffer == m_txBufferMap.end () || txBuffer->second.empty ())
+        {
+          // discard the tranmission opportunity and go to the next transmission
+          continue;
+        }
         // otherwise, forward the packet to the PHY
         Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
         pb->AddPacket (txBuffer->second.front ().pdu);
         m_phySapProvider->AddTransportBlock (pb, *it);
         txBuffer->second.pop_front ();
-        
-        Simulator::Schedule (m_phyMacConfig->GetSymbolPeriod () / 2, 
+          
+      }
+        Simulator::Schedule (m_phyMacConfig->GetSymbolPeriod (), 
                              &MmWaveSidelinkMac::CheckChannelState, this);
-      }else{
-        //se il segnale è per me allora ricevo, sennò sto fermo
-        NS_LOG_INFO ("Prepare for reception from rnti " << it->m_rnti);
+      }
+      else
+      {
         
         // wait for a random time before checking the channel state again
+        // TODO make backoff time configurable
         Ptr<UniformRandomVariable> rv = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (0), 
-                                                                                           "Max", DoubleValue (1));
+                                                                                           "Max", DoubleValue (10));
         uint8_t backoff = rv->GetValue (); 
         NS_LOG_DEBUG ("Wait for " << +backoff << " slots before checking the channel state again");
-        Simulator::Schedule (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod () / 2, 
+        Simulator::Schedule (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod (), 
                              &MmWaveSidelinkMac::CheckChannelState, this);
-        // m_phySapProvider->PrepareForReception (it->m_rnti);
-        //m_phySapProvider->PrepareForReception (m_sfAllocInfo[timingInfo.m_slotNum]);
       }
-    }
-  }else{
+  }
+  else
+  {
     if(m_sfAllocInfo [timingInfo.m_slotNum] == m_rnti) // check if this slot is associated to the user who required it
     {
       mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);

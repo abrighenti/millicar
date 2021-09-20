@@ -158,7 +158,7 @@ MmWaveSidelinkSpectrumPhy::SetMobility (Ptr<MobilityModel> m)
 bool
 MmWaveSidelinkSpectrumPhy::IsChannelIdle ()
 {
-  if (m_state== IDLE){
+  if (m_state != RX_INTERFERENCE){
     return true;
   }else{
     return false;
@@ -505,7 +505,7 @@ MmWaveSidelinkSpectrumPhy::EndRxData ()
   //   m_phyRxCtrlEndOkCallback (m_rxControlMessageList);
   // }
 
-  m_state = IDLE;
+  ChangeState (IDLE);
   m_rxTransportBlock.clear ();
   //m_rxControlMessageList.clear ();
 }
@@ -516,7 +516,7 @@ MmWaveSidelinkSpectrumPhy::EndRxInterference ()
 {
   NS_ASSERT (m_state = RX_INTERFERENCE);
 
-  m_state = IDLE;
+  ChangeState (IDLE);
 }
 
 // void
@@ -565,8 +565,8 @@ MmWaveSidelinkSpectrumPhy::StartTxDataFrames (Ptr<PacketBurst> pb,
     case IDLE:
       {
         NS_ASSERT (m_txPsd);
-
-        m_state = TX;
+        
+        ChangeState (TX);
         Ptr<MmWaveSidelinkSpectrumSignalParameters> txParams = Create<MmWaveSidelinkSpectrumSignalParameters> ();
         txParams->duration = duration;
         txParams->txPhy = this->GetObject<SpectrumPhy> ();
@@ -634,7 +634,7 @@ MmWaveSidelinkSpectrumPhy::EndTx ()
 {
   NS_ASSERT (m_state == TX);
 
-  m_state = IDLE;
+  ChangeState (IDLE);
 }
 
 Ptr<SpectrumChannel>
