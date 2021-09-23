@@ -101,6 +101,11 @@ MmWaveSidelinkMac::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&MmWaveSidelinkMac::m_useCSMA),
                    MakeBooleanChecker ())
+    .AddAttribute ("backOffBound",
+                   "Set the upper bound for random backoff time (in slot)",
+                   UintegerValue (10),
+                   MakeUintegerAccessor (&MmWaveSidelinkMac::m_backOffMax),
+                   MakeUintegerChecker<uint16_t> (0, 100))
     .AddTraceSource ("SchedulingInfo",
                      "Information regarding the scheduling.",
                      MakeTraceSourceAccessor (&MmWaveSidelinkMac::m_schedulingTrace),
@@ -203,9 +208,8 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
       {
         
         // wait for a random time before checking the channel state again
-        // TODO make backoff time configurable
         Ptr<UniformRandomVariable> rv = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (0), 
-                                                                                           "Max", DoubleValue (10));
+                                                                                           "Max", DoubleValue (m_backOffMax));
         uint8_t backoff = rv->GetValue (); 
         NS_LOG_DEBUG ("Wait for " << +backoff << " slots before checking the channel state again");
         Simulator::Schedule (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod (), 
