@@ -107,6 +107,12 @@ MmWaveSidelinkSpectrumPhy::GetTypeId (void)
                    TypeIdValue (MmWaveLteMiErrorModel::GetTypeId ()),
                    MakeTypeIdAccessor (&MmWaveSidelinkSpectrumPhy::SetErrorModelType),
                    MakeTypeIdChecker ())
+    .AddAttribute ("InterferenceThreshold",
+                   "Threshold to declare channel idle",
+                   DoubleValue(3.0e-17),
+                   MakeDoubleAccessor(&MmWaveSidelinkSpectrumPhy::m_interfThreshold),
+                   MakeDoubleChecker<double>(1e-20, 1e-10)
+                   )
   ;
 
   return tid;
@@ -158,7 +164,7 @@ MmWaveSidelinkSpectrumPhy::SetMobility (Ptr<MobilityModel> m)
 bool
 MmWaveSidelinkSpectrumPhy::IsChannelIdle ()
 {
-  if (m_state != RX_INTERFERENCE){
+  if (m_state == IDLE){
     return true;
   }else{
     return false;
@@ -383,15 +389,18 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
           NS_LOG_LOGIC (this << " not in sync with this signal (rnti="
               << params->destinationRnti  << ", rnti of the device="
               << thisDeviceRnti << ")");
+          //std::cout << "deviceId: " << thisDeviceRnti << " getInterference(): " << m_interferenceData->GetInterference() << std::endl;
+          //std::cout << "deviceId: " << thisDeviceRnti << " getInterference(): " << m_interferenceData << std::endl;
+          if(m_interferenceData->GetInterference() > m_interfThreshold){
+              //Signal is not for this device: thus interference
+            ChangeState (RX_INTERFERENCE);
+            // first transmission, i.e., we're IDLE and we start RX
+            m_firstRxStart = Simulator::Now ();
+            m_firstRxDuration = params->duration;
+            NS_LOG_LOGIC (this << " scheduling EndRxInterference with delay " << params->duration.GetSeconds () << "s");
 
-          //Signal is not for this device: thus interference
-          ChangeState (RX_INTERFERENCE);
-          // first transmission, i.e., we're IDLE and we start RX
-          m_firstRxStart = Simulator::Now ();
-          m_firstRxDuration = params->duration;
-          NS_LOG_LOGIC (this << " scheduling EndRxInterference with delay " << params->duration.GetSeconds () << "s");
-
-          m_endRxDataEvent = Simulator::Schedule (params->duration, &MmWaveSidelinkSpectrumPhy::EndRxInterference, this);
+            m_endRxDataEvent = Simulator::Schedule (params->duration, &MmWaveSidelinkSpectrumPhy::EndRxInterference, this);
+          }
         }
         //m_rxControlMessageList.insert (m_rxControlMessageList.end (), params->ctrlMsgList.begin (), params->ctrlMsgList.end ());
       }
