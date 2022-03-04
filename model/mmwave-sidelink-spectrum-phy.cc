@@ -111,7 +111,7 @@ MmWaveSidelinkSpectrumPhy::GetTypeId (void)
                    "Threshold to declare channel idle",
                    DoubleValue(3.0e-17),
                    MakeDoubleAccessor(&MmWaveSidelinkSpectrumPhy::m_interfThreshold),
-                   MakeDoubleChecker<double>(1e-20, 1e-10)
+                   MakeDoubleChecker<double>(0.0, 1.0)
                    )
   ;
 
@@ -164,7 +164,14 @@ MmWaveSidelinkSpectrumPhy::SetMobility (Ptr<MobilityModel> m)
 bool
 MmWaveSidelinkSpectrumPhy::IsChannelIdle ()
 {
-  if (m_state == IDLE){
+  //NS_LOG_UNCOND(Simulator::Now().GetNanoSeconds() << " " << m_interferenceData->GetInterference());
+  /*if (m_state == IDLE){
+    return true;
+  }else{
+    return false;
+  }*/
+
+  if(m_interferenceData->GetInterference() <= m_interfThreshold){
     return true;
   }else{
     return false;
@@ -273,7 +280,7 @@ MmWaveSidelinkSpectrumPhy::StartRx (Ptr<SpectrumSignalParameters> params)
     {
       // other type of signal that needs to be counted as interference
       m_interferenceData->AddSignal (params->psd, params->duration);
-      //ChangeState (RX_INTERFERENCE);
+      
     }
 }
 
@@ -300,7 +307,7 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
       m_interferenceData->AddSignal (params->psd, params->duration);
 
       break;
-    case RX_INTERFERENCE:
+    /*case RX_INTERFERENCE:
     {
       // check if the packet is for this device, otherwise
       // consider it only for the interference
@@ -316,26 +323,7 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
         NS_LOG_LOGIC (this << " scheduling EndRx with delay " << params->duration.GetSeconds () << "s");
 
         m_endRxDataEvent = Simulator::Schedule (params->duration, &MmWaveSidelinkSpectrumPhy::EndRxData, this);
-        /*if (m_rxTransportBlock.empty ())
-          {
-            NS_ASSERT (m_state == IDLE);
-            // first transmission, i.e., we're IDLE and we start RX
-            m_firstRxStart = Simulator::Now ();
-            m_firstRxDuration = params->duration;
-            NS_LOG_LOGIC (this << " scheduling EndRx with delay " << params->duration.GetSeconds () << "s");
-
-            m_endRxDataEvent = Simulator::Schedule (params->duration, &MmWaveSidelinkSpectrumPhy::EndRxData, this);
-          }
-        else
-          {
-            NS_ASSERT (m_state == RX_DATA);
-            // sanity check: if there are multiple RX events, they
-            // should occur at the same time and have the same
-            // duration, otherwise the interference calculation
-            // won't be correct
-            NS_ASSERT ((m_firstRxStart == Simulator::Now ()) && (m_firstRxDuration == params->duration));
-          }
-        */
+        
         ChangeState (RX_DATA);
         if (params->packetBurst && !params->packetBurst->GetPackets ().empty ())
           {
@@ -344,7 +332,7 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
           }
       }
     }
-    break;
+    break;*/
     case IDLE:
       {
         // check if the packet is for this device, otherwise
@@ -389,9 +377,8 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
           NS_LOG_LOGIC (this << " not in sync with this signal (rnti="
               << params->destinationRnti  << ", rnti of the device="
               << thisDeviceRnti << ")");
-          //std::cout << "deviceId: " << thisDeviceRnti << " getInterference(): " << m_interferenceData->GetInterference() << std::endl;
-          //std::cout << "deviceId: " << thisDeviceRnti << " getInterference(): " << m_interferenceData << std::endl;
-          if(m_interferenceData->GetInterference() > m_interfThreshold){
+          
+          /*if(m_interferenceData->GetInterference() > m_interfThreshold){
               //Signal is not for this device: thus interference
             ChangeState (RX_INTERFERENCE);
             // first transmission, i.e., we're IDLE and we start RX
@@ -400,7 +387,7 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
             NS_LOG_LOGIC (this << " scheduling EndRxInterference with delay " << params->duration.GetSeconds () << "s");
 
             m_endRxDataEvent = Simulator::Schedule (params->duration, &MmWaveSidelinkSpectrumPhy::EndRxInterference, this);
-          }
+          }*/
         }
         //m_rxControlMessageList.insert (m_rxControlMessageList.end (), params->ctrlMsgList.begin (), params->ctrlMsgList.end ());
       }
@@ -565,7 +552,7 @@ MmWaveSidelinkSpectrumPhy::StartTxDataFrames (Ptr<PacketBurst> pb,
     {
     case RX_DATA:
     case RX_CTRL:
-    case RX_INTERFERENCE:
+    /*case RX_INTERFERENCE:*/
       NS_FATAL_ERROR ("Cannot transmit while receiving");
       break;
     case TX:
