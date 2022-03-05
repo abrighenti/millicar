@@ -175,7 +175,7 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
     // the receivers, while those with odd rnti are the transmitter
     if (m_rnti % 2 == 0)
     {
-      NS_LOG_UNCOND("preparing to receive " << Simulator::Now().GetMicroSeconds());
+      //NS_LOG_UNCOND("preparing to receive " << Simulator::Now().GetMicroSeconds());
       m_phySapProvider->PrepareForReception (m_rnti - 1);
     }
 
@@ -183,7 +183,7 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
     if(m_isChannelIdle)
     {
       mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
-      NS_LOG_UNCOND("channel is idle " << Simulator::Now().GetMicroSeconds());
+      NS_LOG_UNCOND("device " << m_rnti << " channel is idle " << Simulator::Now().GetMicroSeconds());
       // associate slot alloc info and pdu
       for (auto it = allocationInfo.m_ttiAllocInfo.begin(); it != allocationInfo.m_ttiAllocInfo.end (); it++)
       {
@@ -212,7 +212,7 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
       Ptr<UniformRandomVariable> rv = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (0), 
                                                                                           "Max", DoubleValue (m_backOffMax));
       uint8_t backoff = rv->GetValue (); 
-      NS_LOG_UNCOND("Wait for " << +backoff << " slots before checking the channel state again " << Simulator::Now().GetMicroSeconds());
+      NS_LOG_UNCOND("device " << m_rnti << " wait for " << +backoff << " slots " << Simulator::Now().GetMicroSeconds());
       Simulator::Schedule (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod (), 
                             &MmWaveSidelinkMac::CheckChannelState, this);
     }
