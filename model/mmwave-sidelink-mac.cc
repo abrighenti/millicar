@@ -175,47 +175,52 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
     // the receivers, while those with odd rnti are the transmitter
     if (m_rnti % 2 == 0)
     {
-      //NS_LOG_UNCOND("preparing to receive " << Simulator::Now().GetMicroSeconds());
+      NS_LOG_UNCOND("device " << m_rnti << " preparing to receive " << Simulator::Now().GetMicroSeconds());
       m_phySapProvider->PrepareForReception (m_rnti - 1);
-    }
-
-
-    if(m_isChannelIdle)
-    {
-      mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
-      NS_LOG_UNCOND("device " << m_rnti << " channel is idle " << Simulator::Now().GetMicroSeconds());
-      // associate slot alloc info and pdu
-      for (auto it = allocationInfo.m_ttiAllocInfo.begin(); it != allocationInfo.m_ttiAllocInfo.end (); it++)
-      {
-        // retrieve the tx buffer corresponding to the assigned destination
-        auto txBuffer = m_txBufferMap.find (it->m_rnti); // the destination RNTI
-
-        if (txBuffer == m_txBufferMap.end () || txBuffer->second.empty ())
-        {
-          // discard the tranmission opportunity and go to the next transmission
-          continue;
-        }
-        // otherwise, forward the packet to the PHY
-        Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
-        pb->AddPacket (txBuffer->second.front ().pdu);
-        m_phySapProvider->AddTransportBlock (pb, *it);
-        txBuffer->second.pop_front ();
-          
-      }
-        Simulator::Schedule (m_phyMacConfig->GetSymbolPeriod (), 
-                             &MmWaveSidelinkMac::CheckChannelState, this);
     }
     else
     {
-      
-      // wait for a random time before checking the channel state again
-      Ptr<UniformRandomVariable> rv = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (0), 
-                                                                                          "Max", DoubleValue (m_backOffMax));
-      uint8_t backoff = rv->GetValue (); 
-      NS_LOG_UNCOND("device " << m_rnti << " wait for " << +backoff << " slots " << Simulator::Now().GetMicroSeconds());
-      Simulator::Schedule (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod (), 
-                            &MmWaveSidelinkMac::CheckChannelState, this);
+      if(m_isChannelIdle)
+      {
+        mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
+        NS_LOG_UNCOND("device " << m_rnti << " channel is idle " << Simulator::Now().GetMicroSeconds());
+        // associate slot alloc info and pdu
+        for (auto it = allocationInfo.m_ttiAllocInfo.begin(); it != allocationInfo.m_ttiAllocInfo.end (); it++)
+        {
+          // retrieve the tx buffer corresponding to the assigned destination
+          auto txBuffer = m_txBufferMap.find (it->m_rnti); // the destination RNTI
+
+          if (txBuffer == m_txBufferMap.end () || txBuffer->second.empty ())
+          {
+            // discard the tranmission opportunity and go to the next transmission
+            continue;
+          }
+          // otherwise, forward the packet to the PHY
+          Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
+          pb->AddPacket (txBuffer->second.front ().pdu);
+          m_phySapProvider->AddTransportBlock (pb, *it);
+          NS_LOG_UNCOND("device " << m_rnti << " transmitted " << Simulator::Now().GetMicroSeconds());
+          txBuffer->second.pop_front ();
+            
+        }
+          Simulator::Schedule (m_phyMacConfig->GetSymbolPeriod (), 
+                              &MmWaveSidelinkMac::CheckChannelState, this);
+      }
+      else
+      {
+        
+        // wait for a random time before checking the channel state again
+        Ptr<UniformRandomVariable> rv = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (0), 
+                                                                                            "Max", DoubleValue (m_backOffMax));
+        uint8_t backoff = rv->GetValue (); 
+        NS_LOG_UNCOND("device " << m_rnti << " wait for " << +backoff << " slots " << Simulator::Now().GetMicroSeconds());
+        Simulator::Schedule (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod (), 
+                              &MmWaveSidelinkMac::CheckChannelState, this);
+      }
+
     }
+
+    
   }
   else
   {
