@@ -54,7 +54,7 @@ public:
   /**
    * \brief Called by the upper layer to check if channel is idle
    */
-  virtual bool IsChannelIdle () = 0;
+  virtual bool IsChannelIdle (uint16_t rnti) = 0;
 
 };
 

@@ -162,9 +162,9 @@ MmWaveSidelinkSpectrumPhy::SetMobility (Ptr<MobilityModel> m)
 }
 
 bool
-MmWaveSidelinkSpectrumPhy::IsChannelIdle ()
+MmWaveSidelinkSpectrumPhy::IsChannelIdle (uint16_t rnti)
 {
-  //NS_LOG_UNCOND(Simulator::Now().GetNanoSeconds() << " " << m_interferenceData->GetInterference());
+  NS_LOG_UNCOND(rnti << " " << Simulator::Now().GetNanoSeconds() << " " << m_interferenceData->GetInterference());
   /*if (m_state == IDLE){
     return true;
   }else{

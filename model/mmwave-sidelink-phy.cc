@@ -42,9 +42,9 @@ MacSidelinkMemberPhySapProvider::AddTransportBlock (Ptr<PacketBurst> pb, mmwave:
 }
 
 bool
-MacSidelinkMemberPhySapProvider::IsChannelIdle ()
+MacSidelinkMemberPhySapProvider::IsChannelIdle (uint16_t rnti)
 {
-  return m_phy->GetSpectrumPhy()->IsChannelIdle();
+  return m_phy->GetSpectrumPhy()->IsChannelIdle(rnti);
 }
 
 void

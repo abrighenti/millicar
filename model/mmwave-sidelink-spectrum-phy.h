@@ -147,7 +147,7 @@ public:
    *
    * @return True if channel is IDLE, false otherwise
    */
-  bool IsChannelIdle ();
+  bool IsChannelIdle (uint16_t rnti);
 
   /**
    * Set the channel attached to this device.
