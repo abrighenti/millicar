@@ -171,15 +171,24 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
   
   if(m_useCSMA)
   {
-    
       // TODO configure beamforming in a better way
       // this works because in our example devices with even rnti (2 and 4) are 
       // the receivers, while those with odd rnti are the transmitter
-      if (m_rnti % 2 == 0)
+      
+      /*if (m_rnti % 2 == 0)
       {
         //NS_LOG_UNCOND("device " << m_rnti << " preparing to receive " << Simulator::Now().GetMicroSeconds());
         m_phySapProvider->PrepareForReception (m_rnti - 1);
+      }*/
+      if (m_rnti == 4)
+      {
+        for (int index = 1; index<4;index++){
+          //NS_LOG_UNCOND("preparing to receive from " << index << " " << Simulator::Now().GetMicroSeconds());
+          m_phySapProvider->PrepareForReception (index);
+        }
+        
       }
+
       //else
       //{
       if (m_timeNextCheck ==0 || Simulator::Now().GetMicroSeconds() >= m_timeNextCheck)
