@@ -443,10 +443,10 @@ MmWaveSidelinkSpectrumPhy::EndRxData ()
              continue;
            }
             
-          Ptr<Packet> newPacket = (*j)->Copy ();
+          /*Ptr<Packet> newPacket = (*j)->Copy ();
           SeqTsHeader seqTs;
           newPacket->RemoveHeader (seqTs);
-          NS_LOG_UNCOND("SPEC_PHY,RX," <<-1<<","<<(*i).rnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());
+          NS_LOG_UNCOND("SPEC_PHY,RX," <<-1<<","<<(*i).rnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());*/
               
 
            // Do we need the LteRadioBearerTag also here to check the rnti? I don't think so.
@@ -545,12 +545,12 @@ MmWaveSidelinkSpectrumPhy::StartTxDataFrames (Ptr<PacketBurst> pb,
         txParams->rbBitmap = rbBitmap;
 
         m_channel->StartTx (txParams);
-        for (Ptr<Packet> p : pb->GetPackets()){
+        /*for (Ptr<Packet> p : pb->GetPackets()){
           Ptr<Packet> newPacket = p->Copy ();
           SeqTsHeader seqTs;
           newPacket->RemoveHeader (seqTs);
           NS_LOG_UNCOND("SPEC_PHY,TX," <<senderRnti<<","<<destinationRnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());
-        }
+        }*/
         // The end of the tranmission is reduced by 1 ns to avoid collision in case of a consecutive tranmission in the same slot.
         m_endTxEvent = Simulator::Schedule (duration - NanoSeconds(1.0), &MmWaveSidelinkSpectrumPhy::EndTx, this);
       }
