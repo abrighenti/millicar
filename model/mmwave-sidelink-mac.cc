@@ -27,6 +27,8 @@
 #include "ns3/boolean.h"
 #include "ns3/random-variable-stream.h"
 
+#include <ns3/seq-ts-header.h>
+
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("MmWaveSidelinkMac");
@@ -175,28 +177,17 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
       // this works because in our example devices with even rnti (2 and 4) are 
       // the receivers, while those with odd rnti are the transmitter
       
-      /*if (m_rnti % 2 == 0)
+      //if (m_rnti % 2 == 0)
+      if (m_rnti % 4 == 0)
       {
-        //NS_LOG_UNCOND("device " << m_rnti << " preparing to receive " << Simulator::Now().GetMicroSeconds());
         m_phySapProvider->PrepareForReception (m_rnti - 1);
-      }*/
-      if (m_rnti == 4)
-      {
-        for (int index = 1; index<4;index++){
-          //NS_LOG_UNCOND("preparing to receive from " << index << " " << Simulator::Now().GetMicroSeconds());
-          m_phySapProvider->PrepareForReception (index);
-        }
-        
       }
 
-      //else
-      //{
       if (m_timeNextCheck ==0 || Simulator::Now().GetMicroSeconds() >= m_timeNextCheck)
       {
         if(m_isChannelIdle)
         {
           mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
-          //NS_LOG_UNCOND("device " << m_rnti << " channel is idle " << Simulator::Now().GetMicroSeconds());
           // associate slot alloc info and pdu
           for (auto it = allocationInfo.m_ttiAllocInfo.begin(); it != allocationInfo.m_ttiAllocInfo.end (); it++)
           {
@@ -211,8 +202,13 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
             // otherwise, forward the packet to the PHY
             Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
             pb->AddPacket (txBuffer->second.front ().pdu);
+            for (Ptr<Packet> p : pb->GetPackets()){
+              Ptr<Packet> newPacket = p->Copy ();
+              SeqTsHeader seqTs;
+              newPacket->RemoveHeader (seqTs);
+              NS_LOG_UNCOND("MAC,TX," <<m_rnti<<","<<it->m_rnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());
+            }
             m_phySapProvider->AddTransportBlock (pb, *it);
-            //NS_LOG_UNCOND("device " << m_rnti << " transmitted " << Simulator::Now().GetMicroSeconds());
             txBuffer->second.pop_front ();
               
           }
@@ -227,14 +223,13 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
           Ptr<UniformRandomVariable> rv = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (0), 
                                                                                               "Max", DoubleValue (m_backOffMax));
           uint8_t backoff = rv->GetValue (); 
-          //NS_LOG_UNCOND("device " << m_rnti << " wait for " << +backoff << " slots " << Simulator::Now().GetMicroSeconds());
+          
           Simulator::Schedule (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod (), 
                                 &MmWaveSidelinkMac::CheckChannelState, this);
           m_timeNextCheck = Simulator::Now().GetMicroSeconds()+ (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod ()).GetMicroSeconds();
         
       }
 
-    //}
     }
     
   }
@@ -258,6 +253,12 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
         // otherwise, forward the packet to the PHY
         Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
         pb->AddPacket (txBuffer->second.front ().pdu);
+        for (Ptr<Packet> p : pb->GetPackets()){
+          Ptr<Packet> newPacket = p->Copy ();
+          SeqTsHeader seqTs;
+          newPacket->RemoveHeader (seqTs);
+          NS_LOG_UNCOND("MAC,TX," <<m_rnti<<","<<it->m_rnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());
+        }
         m_phySapProvider->AddTransportBlock (pb, *it);
         txBuffer->second.pop_front ();
       }
@@ -516,7 +517,11 @@ MmWaveSidelinkMac::DoReceivePhyPdu (Ptr<Packet> p)
   rxPduParams.lcid = tag.GetLcid ();
 
   NS_LOG_DEBUG ("Received a packet " << rxPduParams.rnti << " " << (uint16_t)rxPduParams.lcid);
-
+  Ptr<Packet> newPacket = p->Copy ();
+  SeqTsHeader seqTs;
+  newPacket->RemoveHeader (seqTs);
+  NS_LOG_UNCOND("MAC,RX," <<m_rnti<<",-1,"<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());
+  
   LteMacSapUser* macSapUser = m_lcidToMacSap.find(rxPduParams.lcid)->second;
   macSapUser->ReceivePdu (rxPduParams);
 }

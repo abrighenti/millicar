@@ -35,6 +35,8 @@
 #include <ns3/mmwave-vehicular-net-device.h>
 #include <ns3/mmwave-vehicular-antenna-array-model.h>
 
+#include <ns3/seq-ts-header.h>
+
 using namespace ns3;
 using namespace mmwave;
 using namespace millicar;
@@ -164,12 +166,7 @@ MmWaveSidelinkSpectrumPhy::SetMobility (Ptr<MobilityModel> m)
 bool
 MmWaveSidelinkSpectrumPhy::IsChannelIdle (uint16_t rnti)
 {
-  NS_LOG_UNCOND(rnti << " " << Simulator::Now().GetNanoSeconds() << " " << m_interferenceData->GetInterference());
-  /*if (m_state == IDLE){
-    return true;
-  }else{
-    return false;
-  }*/
+  //NS_LOG_UNCOND(rnti << " " << Simulator::Now().GetMicroSeconds() << " " << m_interferenceData->GetInterference());
 
   if(m_interferenceData->GetInterference() <= m_interfThreshold){
     return true;
@@ -307,32 +304,6 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
       m_interferenceData->AddSignal (params->psd, params->duration);
 
       break;
-    /*case RX_INTERFERENCE:
-    {
-      // check if the packet is for this device, otherwise
-      // consider it only for the interference
-      m_interferenceData->AddSignal (params->psd, params->duration);
-      uint16_t thisDeviceRnti =
-        DynamicCast<MmWaveVehicularNetDevice>(m_device)->GetMac()->GetRnti();
-      if(thisDeviceRnti == params->destinationRnti)
-      {
-        // this is a useful signal
-        m_interferenceData->StartRx (params->psd);
-        m_firstRxStart = Simulator::Now ();
-        m_firstRxDuration = params->duration;
-        NS_LOG_LOGIC (this << " scheduling EndRx with delay " << params->duration.GetSeconds () << "s");
-
-        m_endRxDataEvent = Simulator::Schedule (params->duration, &MmWaveSidelinkSpectrumPhy::EndRxData, this);
-        
-        ChangeState (RX_DATA);
-        if (params->packetBurst && !params->packetBurst->GetPackets ().empty ())
-          {
-            TbInfo_t tbInfo = {params->packetBurst, params->size, params->mcs, params->numSym, params->senderRnti, params->rbBitmap};
-            m_rxTransportBlock.push_back (tbInfo);
-          }
-      }
-    }
-    break;*/
     case IDLE:
       {
         // check if the packet is for this device, otherwise
@@ -378,16 +349,6 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
               << params->destinationRnti  << ", rnti of the device="
               << thisDeviceRnti << ")");
           
-          /*if(m_interferenceData->GetInterference() > m_interfThreshold){
-              //Signal is not for this device: thus interference
-            ChangeState (RX_INTERFERENCE);
-            // first transmission, i.e., we're IDLE and we start RX
-            m_firstRxStart = Simulator::Now ();
-            m_firstRxDuration = params->duration;
-            NS_LOG_LOGIC (this << " scheduling EndRxInterference with delay " << params->duration.GetSeconds () << "s");
-
-            m_endRxDataEvent = Simulator::Schedule (params->duration, &MmWaveSidelinkSpectrumPhy::EndRxInterference, this);
-          }*/
         }
         //m_rxControlMessageList.insert (m_rxControlMessageList.end (), params->ctrlMsgList.begin (), params->ctrlMsgList.end ());
       }
@@ -481,6 +442,12 @@ MmWaveSidelinkSpectrumPhy::EndRxData ()
            {
              continue;
            }
+            
+          Ptr<Packet> newPacket = (*j)->Copy ();
+          SeqTsHeader seqTs;
+          newPacket->RemoveHeader (seqTs);
+          NS_LOG_UNCOND("SPEC_PHY,RX," <<-1<<","<<(*i).rnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());
+              
 
            // Do we need the LteRadioBearerTag also here to check the rnti? I don't think so.
            NS_ASSERT_MSG (!m_phyRxDataEndOkCallback.IsNull (), "First set the rx callback");
@@ -578,7 +545,12 @@ MmWaveSidelinkSpectrumPhy::StartTxDataFrames (Ptr<PacketBurst> pb,
         txParams->rbBitmap = rbBitmap;
 
         m_channel->StartTx (txParams);
-
+        for (Ptr<Packet> p : pb->GetPackets()){
+          Ptr<Packet> newPacket = p->Copy ();
+          SeqTsHeader seqTs;
+          newPacket->RemoveHeader (seqTs);
+          NS_LOG_UNCOND("SPEC_PHY,TX," <<senderRnti<<","<<destinationRnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());
+        }
         // The end of the tranmission is reduced by 1 ns to avoid collision in case of a consecutive tranmission in the same slot.
         m_endTxEvent = Simulator::Schedule (duration - NanoSeconds(1.0), &MmWaveSidelinkSpectrumPhy::EndTx, this);
       }
