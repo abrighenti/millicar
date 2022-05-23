@@ -182,7 +182,6 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
       // this works because in our example devices with even rnti (2 and 4) are 
       // the receivers, while those with odd rnti are the transmitter
       
-      //if (m_rnti % 2 == 0)
       if (m_rnti % m_vehiclesPerPlatoon == 0)
       {
         m_phySapProvider->PrepareForReception (m_rnti - 1);
