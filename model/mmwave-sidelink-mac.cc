@@ -108,6 +108,11 @@ MmWaveSidelinkMac::GetTypeId (void)
                    UintegerValue (10),
                    MakeUintegerAccessor (&MmWaveSidelinkMac::m_backOffMax),
                    MakeUintegerChecker<uint16_t> (0, 100))
+    .AddAttribute ("vehicles",
+                   "Set the number of vehicles per platoon",
+                   UintegerValue (4),
+                   MakeUintegerAccessor (&MmWaveSidelinkMac::m_vehiclesPerPlatoon),
+                   MakeUintegerChecker<uint16_t> (2, 10))
     .AddTraceSource ("SchedulingInfo",
                      "Information regarding the scheduling.",
                      MakeTraceSourceAccessor (&MmWaveSidelinkMac::m_schedulingTrace),
@@ -178,7 +183,7 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
       // the receivers, while those with odd rnti are the transmitter
       
       //if (m_rnti % 2 == 0)
-      if (m_rnti % 4 == 0)
+      if (m_rnti % m_vehiclesPerPlatoon == 0)
       {
         m_phySapProvider->PrepareForReception (m_rnti - 1);
       }

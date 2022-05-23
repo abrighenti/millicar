@@ -223,6 +223,7 @@ private:
   std::map<uint8_t, LteMacSapProvider::ReportBufferStatusParameters> m_bufferStatusReportMap; //!< map containing the <LCID, buffer status in bits> pairs
   bool m_isChannelIdle; //!< used to track the channel state
   int64_t m_timeNextCheck;
+  int16_t m_vehiclesPerPlatoon; //!< number of vehicles in each platoon
   // trace sources
   TracedCallback<SlSchedulingCallback> m_schedulingTrace; //!< trace source returning information regarding the scheduling
 };
