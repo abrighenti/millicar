@@ -105,14 +105,14 @@ MmWaveSidelinkMac::GetTypeId (void)
                    MakeBooleanChecker ())
     .AddAttribute ("backOffBound",
                    "Set the upper bound for random backoff time (in slot)",
-                   UintegerValue (10),
+                   UintegerValue (8),
                    MakeUintegerAccessor (&MmWaveSidelinkMac::m_backOffMax),
-                   MakeUintegerChecker<uint16_t> (0, 100))
+                   MakeUintegerChecker<uint16_t> (0, 80))
     .AddAttribute ("vehicles",
                    "Set the number of vehicles per platoon",
                    UintegerValue (4),
                    MakeUintegerAccessor (&MmWaveSidelinkMac::m_vehiclesPerPlatoon),
-                   MakeUintegerChecker<uint16_t> (2, 10))
+                   MakeUintegerChecker<uint16_t> (2, 4))
     .AddTraceSource ("SchedulingInfo",
                      "Information regarding the scheduling.",
                      MakeTraceSourceAccessor (&MmWaveSidelinkMac::m_schedulingTrace),

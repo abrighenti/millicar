@@ -473,15 +473,6 @@ MmWaveSidelinkSpectrumPhy::EndRxData ()
   //m_rxControlMessageList.clear ();
 }
 
-//method to end rx interference
-void
-MmWaveSidelinkSpectrumPhy::EndRxInterference ()
-{
-  NS_ASSERT (m_state = RX_INTERFERENCE);
-
-  ChangeState (IDLE);
-}
-
 // void
 // MmWaveSidelinkSpectrumPhy::EndRxCtrl ()
 // {

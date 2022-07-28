@@ -99,8 +99,7 @@ public:
     IDLE = 0,
     TX,
     RX_DATA,
-    RX_CTRL,
-    RX_INTERFERENCE
+    RX_CTRL
   };
 
   /**
@@ -280,7 +279,6 @@ private:
   /// End receive data function
   void EndRxData ();
   //void EndRxCtrl ();
-  void EndRxInterference ();
 
   Ptr<mmwave::mmWaveInterference> m_interferenceData; ///< the data interference
   Ptr<MobilityModel> m_mobility; ///< the modility model
