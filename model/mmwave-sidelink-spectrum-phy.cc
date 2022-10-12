@@ -166,7 +166,6 @@ MmWaveSidelinkSpectrumPhy::SetMobility (Ptr<MobilityModel> m)
 bool
 MmWaveSidelinkSpectrumPhy::IsChannelIdle (uint16_t rnti)
 {
-  //NS_LOG_UNCOND(rnti << " " << Simulator::Now().GetMicroSeconds() << " " << m_interferenceData->GetInterference());
 
   if(m_interferenceData->GetInterference() <= m_interfThreshold){
     return true;
@@ -442,12 +441,7 @@ MmWaveSidelinkSpectrumPhy::EndRxData ()
            {
              continue;
            }
-            
-          /*Ptr<Packet> newPacket = (*j)->Copy ();
-          SeqTsHeader seqTs;
-          newPacket->RemoveHeader (seqTs);
-          NS_LOG_UNCOND("SPEC_PHY,RX," <<-1<<","<<(*i).rnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());*/
-              
+                          
 
            // Do we need the LteRadioBearerTag also here to check the rnti? I don't think so.
            NS_ASSERT_MSG (!m_phyRxDataEndOkCallback.IsNull (), "First set the rx callback");
@@ -510,7 +504,6 @@ MmWaveSidelinkSpectrumPhy::StartTxDataFrames (Ptr<PacketBurst> pb,
     {
     case RX_DATA:
     case RX_CTRL:
-    /*case RX_INTERFERENCE:*/
       NS_FATAL_ERROR ("Cannot transmit while receiving");
       break;
     case TX:
@@ -536,12 +529,7 @@ MmWaveSidelinkSpectrumPhy::StartTxDataFrames (Ptr<PacketBurst> pb,
         txParams->rbBitmap = rbBitmap;
 
         m_channel->StartTx (txParams);
-        /*for (Ptr<Packet> p : pb->GetPackets()){
-          Ptr<Packet> newPacket = p->Copy ();
-          SeqTsHeader seqTs;
-          newPacket->RemoveHeader (seqTs);
-          NS_LOG_UNCOND("SPEC_PHY,TX," <<senderRnti<<","<<destinationRnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());
-        }*/
+        
         // The end of the tranmission is reduced by 1 ns to avoid collision in case of a consecutive tranmission in the same slot.
         m_endTxEvent = Simulator::Schedule (duration - NanoSeconds(1.0), &MmWaveSidelinkSpectrumPhy::EndTx, this);
       }

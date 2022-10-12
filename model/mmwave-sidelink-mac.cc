@@ -206,12 +206,7 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
             // otherwise, forward the packet to the PHY
             Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
             pb->AddPacket (txBuffer->second.front ().pdu);
-            /*for (Ptr<Packet> p : pb->GetPackets()){
-              Ptr<Packet> newPacket = p->Copy ();
-              SeqTsHeader seqTs;
-              newPacket->RemoveHeader (seqTs);
-              NS_LOG_UNCOND("MAC,TX," <<m_rnti<<","<<it->m_rnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());
-            }*/
+            
             m_phySapProvider->AddTransportBlock (pb, *it);
             txBuffer->second.pop_front ();
               
@@ -257,12 +252,7 @@ MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
         // otherwise, forward the packet to the PHY
         Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
         pb->AddPacket (txBuffer->second.front ().pdu);
-        /*for (Ptr<Packet> p : pb->GetPackets()){
-          Ptr<Packet> newPacket = p->Copy ();
-          SeqTsHeader seqTs;
-          newPacket->RemoveHeader (seqTs);
-          NS_LOG_UNCOND("MAC,TX," <<m_rnti<<","<<it->m_rnti<<","<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());
-        }*/
+        
         m_phySapProvider->AddTransportBlock (pb, *it);
         txBuffer->second.pop_front ();
       }
@@ -521,10 +511,7 @@ MmWaveSidelinkMac::DoReceivePhyPdu (Ptr<Packet> p)
   rxPduParams.lcid = tag.GetLcid ();
 
   NS_LOG_DEBUG ("Received a packet " << rxPduParams.rnti << " " << (uint16_t)rxPduParams.lcid);
-  /*Ptr<Packet> newPacket = p->Copy ();
-  SeqTsHeader seqTs;
-  newPacket->RemoveHeader (seqTs);
-  NS_LOG_UNCOND("MAC,RX," <<m_rnti<<",-1,"<< Simulator::Now().GetSeconds()<<","<<seqTs.GetSeq());*/
+  
   
   LteMacSapUser* macSapUser = m_lcidToMacSap.find(rxPduParams.lcid)->second;
   macSapUser->ReceivePdu (rxPduParams);
