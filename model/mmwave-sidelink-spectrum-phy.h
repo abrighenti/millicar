@@ -142,6 +142,13 @@ public:
   Ptr<MobilityModel> GetMobility ();
 
   /**
+   * Get status of channel
+   *
+   * @return True if channel is IDLE, false otherwise
+   */
+  bool IsChannelIdle (uint16_t rnti);
+
+  /**
    * Set the channel attached to this device.
    *
    * @param c the channel
@@ -279,6 +286,7 @@ private:
   Ptr<SpectrumChannel> m_channel; ///< the channel
   Ptr<const SpectrumModel> m_rxSpectrumModel; ///< the spectrum model
   Ptr<SpectrumValue> m_txPsd; ///< the transmit PSD
+  double m_interfThreshold; ///< interference threshold to declare channel idle
   //Ptr<PacketBurst> m_txPacketBurst;
 
   std::list<TbInfo_t> m_rxTransportBlock; ///< the received with associated structure

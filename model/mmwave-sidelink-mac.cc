@@ -25,6 +25,9 @@
 #include "ns3/log.h"
 #include "ns3/uinteger.h"
 #include "ns3/boolean.h"
+#include "ns3/random-variable-stream.h"
+
+#include <ns3/seq-ts-header.h>
 
 namespace ns3 {
 
@@ -95,6 +98,21 @@ MmWaveSidelinkMac::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&MmWaveSidelinkMac::m_useAmc),
                    MakeBooleanChecker ())
+    .AddAttribute ("UseCSMA",
+                   "Set to true to use millicar in CSMA mode.",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&MmWaveSidelinkMac::m_useCSMA),
+                   MakeBooleanChecker ())
+    .AddAttribute ("backOffBound",
+                   "Set the upper bound for random backoff time (in slot)",
+                   UintegerValue (8),
+                   MakeUintegerAccessor (&MmWaveSidelinkMac::m_backOffMax),
+                   MakeUintegerChecker<uint16_t> (0, 80))
+    .AddAttribute ("vehicles",
+                   "Set the number of vehicles per platoon",
+                   UintegerValue (4),
+                   MakeUintegerAccessor (&MmWaveSidelinkMac::m_vehiclesPerPlatoon),
+                   MakeUintegerChecker<uint16_t> (2, 4))
     .AddTraceSource ("SchedulingInfo",
                      "Information regarding the scheduling.",
                      MakeTraceSourceAccessor (&MmWaveSidelinkMac::m_schedulingTrace),
@@ -124,6 +142,10 @@ MmWaveSidelinkMac::MmWaveSidelinkMac (Ptr<mmwave::MmWavePhyMacCommon> pmc)
   // initialize the scheduling patter
   std::vector<uint16_t> pattern (m_phyMacConfig->GetSlotsPerSubframe (), 0);
   m_sfAllocInfo = pattern;
+
+  m_timeNextCheck=0;
+  
+  Simulator::Schedule (m_phyMacConfig->GetSymbolPeriod () / 2, &MmWaveSidelinkMac::CheckChannelState, this);
 }
 
 MmWaveSidelinkMac::~MmWaveSidelinkMac (void)
@@ -140,43 +162,110 @@ MmWaveSidelinkMac::DoDispose ()
 }
 
 void
+MmWaveSidelinkMac::CheckChannelState (void)
+{
+  NS_LOG_FUNCTION (this);
+  m_isChannelIdle = m_phySapProvider->IsChannelIdle (m_rnti);
+}
+
+void
 MmWaveSidelinkMac::DoSlotIndication (mmwave::SfnSf timingInfo)
 {
   NS_LOG_FUNCTION (this);
 
   NS_ASSERT_MSG (m_rnti != 0, "First set the RNTI");
   NS_ASSERT_MSG (!m_sfAllocInfo.empty (), "First set the scheduling pattern");
-  if(m_sfAllocInfo [timingInfo.m_slotNum] == m_rnti) // check if this slot is associated to the user who required it
+  
+  if(m_useCSMA)
   {
-    mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
-
-    // associate slot alloc info and pdu
-    for (auto it = allocationInfo.m_ttiAllocInfo.begin(); it != allocationInfo.m_ttiAllocInfo.end (); it++)
-    {
-      // retrieve the tx buffer corresponding to the assigned destination
-      auto txBuffer = m_txBufferMap.find (it->m_rnti); // the destination RNTI
-
-      if (txBuffer == m_txBufferMap.end () || txBuffer->second.empty ())
+      // TODO configure beamforming in a better way
+      // this works because in our example devices with even rnti (2 and 4) are 
+      // the receivers, while those with odd rnti are the transmitter
+      
+      if (m_rnti % m_vehiclesPerPlatoon == 0)
       {
-        // discard the tranmission opportunity and go to the next transmission
-        continue;
+        m_phySapProvider->PrepareForReception (m_rnti - 1);
       }
 
-      // otherwise, forward the packet to the PHY
-      Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
-      pb->AddPacket (txBuffer->second.front ().pdu);
-      m_phySapProvider->AddTransportBlock (pb, *it);
-      txBuffer->second.pop_front ();
+      if (m_timeNextCheck ==0 || Simulator::Now().GetMicroSeconds() >= m_timeNextCheck)
+      {
+        if(m_isChannelIdle)
+        {
+          mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
+          // associate slot alloc info and pdu
+          for (auto it = allocationInfo.m_ttiAllocInfo.begin(); it != allocationInfo.m_ttiAllocInfo.end (); it++)
+          {
+            // retrieve the tx buffer corresponding to the assigned destination
+            auto txBuffer = m_txBufferMap.find (it->m_rnti); // the destination RNTI
+
+            if (txBuffer == m_txBufferMap.end () || txBuffer->second.empty ())
+            {
+              // discard the tranmission opportunity and go to the next transmission
+              continue;
+            }
+            // otherwise, forward the packet to the PHY
+            Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
+            pb->AddPacket (txBuffer->second.front ().pdu);
+            
+            m_phySapProvider->AddTransportBlock (pb, *it);
+            txBuffer->second.pop_front ();
+              
+          }
+            Simulator::Schedule (m_phyMacConfig->GetSymbolPeriod (), 
+                                &MmWaveSidelinkMac::CheckChannelState, this);
+            m_timeNextCheck = Simulator::Now().GetMicroSeconds()+m_phyMacConfig->GetSymbolPeriod().GetMicroSeconds();
+        }
+        else
+        {
+          
+          // wait for a random time before checking the channel state again
+          Ptr<UniformRandomVariable> rv = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (0), 
+                                                                                              "Max", DoubleValue (m_backOffMax));
+          uint8_t backoff = rv->GetValue (); 
+          
+          Simulator::Schedule (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod (), 
+                                &MmWaveSidelinkMac::CheckChannelState, this);
+          m_timeNextCheck = Simulator::Now().GetMicroSeconds()+ (backoff * m_phyMacConfig->GetSlotPeriod () + m_phyMacConfig->GetSymbolPeriod ()).GetMicroSeconds();
+        
+      }
+
     }
+    
   }
-  else if (m_sfAllocInfo[timingInfo.m_slotNum] != 0) // if the slot is assigned to another device, prepare for reception
+  else
   {
-    NS_LOG_INFO ("Prepare for reception from rnti " << m_sfAllocInfo[timingInfo.m_slotNum]);
-    m_phySapProvider->PrepareForReception (m_sfAllocInfo[timingInfo.m_slotNum]);
-  }
-  else // the slot is not assigned to any user
-  {
-    NS_LOG_INFO ("Empty slot");
+    if(m_sfAllocInfo [timingInfo.m_slotNum] == m_rnti) // check if this slot is associated to the user who required it
+    {
+      mmwave::SlotAllocInfo allocationInfo = ScheduleResources (timingInfo);
+
+      // associate slot alloc info and pdu
+      for (auto it = allocationInfo.m_ttiAllocInfo.begin(); it != allocationInfo.m_ttiAllocInfo.end (); it++)
+      {
+        // retrieve the tx buffer corresponding to the assigned destination
+        auto txBuffer = m_txBufferMap.find (it->m_rnti); // the destination RNTI
+
+        if (txBuffer == m_txBufferMap.end () || txBuffer->second.empty ())
+        {
+          // discard the tranmission opportunity and go to the next transmission
+          continue;
+        }
+        // otherwise, forward the packet to the PHY
+        Ptr<PacketBurst> pb = CreateObject<PacketBurst> ();
+        pb->AddPacket (txBuffer->second.front ().pdu);
+        
+        m_phySapProvider->AddTransportBlock (pb, *it);
+        txBuffer->second.pop_front ();
+      }
+    }
+    else if (m_sfAllocInfo[timingInfo.m_slotNum] != 0) // if the slot is assigned to another device, prepare for reception
+    {
+      NS_LOG_INFO ("Prepare for reception from rnti " << m_sfAllocInfo[timingInfo.m_slotNum]);
+      m_phySapProvider->PrepareForReception (m_sfAllocInfo[timingInfo.m_slotNum]);
+    }
+    else // the slot is not assigned to any user
+    {
+      NS_LOG_INFO ("Empty slot");
+    }
   }
 
 }
@@ -422,7 +511,8 @@ MmWaveSidelinkMac::DoReceivePhyPdu (Ptr<Packet> p)
   rxPduParams.lcid = tag.GetLcid ();
 
   NS_LOG_DEBUG ("Received a packet " << rxPduParams.rnti << " " << (uint16_t)rxPduParams.lcid);
-
+  
+  
   LteMacSapUser* macSapUser = m_lcidToMacSap.find(rxPduParams.lcid)->second;
   macSapUser->ReceivePdu (rxPduParams);
 }

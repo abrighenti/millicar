@@ -151,7 +151,7 @@ MmWaveVehicularPropagationLossModel::GetLoss (Ptr<MobilityModel> deviceA, Ptr<Mo
 
   if (distance3D < 3 * m_lambda)
     {
-      NS_LOG_UNCOND ("distance not within the far field region => inaccurate propagation loss value");
+      NS_LOG_DEBUG ("distance not within the far field region => inaccurate propagation loss value");
     }
   if (distance3D <= 0)
     {
@@ -167,17 +167,17 @@ MmWaveVehicularPropagationLossModel::GetLoss (Ptr<MobilityModel> deviceA, Ptr<Mo
       if (m_channelConditions.compare ("l") == 0 )
         {
           condition.m_channelCondition = 'l';
-          NS_LOG_UNCOND (m_scenario << " scenario, channel condition is fixed to be " << condition.m_channelCondition << ", h_A=" << hA << ",h_B=" << hB);
+          NS_LOG_DEBUG (m_scenario << " scenario, channel condition is fixed to be " << condition.m_channelCondition << ", h_A=" << hA << ",h_B=" << hB);
         }
       else if (m_channelConditions.compare ("n") == 0)
         {
           condition.m_channelCondition = 'n';
-          NS_LOG_UNCOND (m_scenario << " scenario, channel condition is fixed to be " << condition.m_channelCondition << ", h_A=" << hA << ",h_B=" << hB);
+          NS_LOG_DEBUG (m_scenario << " scenario, channel condition is fixed to be " << condition.m_channelCondition << ", h_A=" << hA << ",h_B=" << hB);
         }
       else if (m_channelConditions.compare ("v") == 0)
         {
           condition.m_channelCondition = 'v';
-          NS_LOG_UNCOND (m_scenario << " scenario, channel condition is fixed to be " << condition.m_channelCondition << ", h_A=" << hA << ",h_B=" << hB);
+          NS_LOG_DEBUG (m_scenario << " scenario, channel condition is fixed to be " << condition.m_channelCondition << ", h_A=" << hA << ",h_B=" << hB);
         }
       else if (m_channelConditions.compare ("a") == 0)
         {

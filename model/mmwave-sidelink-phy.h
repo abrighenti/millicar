@@ -216,6 +216,8 @@ public:
 
   void PrepareForReception (uint16_t rnti) override;
 
+  bool IsChannelIdle (uint16_t rnti) override;
+
 private:
   Ptr<MmWaveSidelinkPhy> m_phy;
 

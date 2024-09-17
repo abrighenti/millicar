@@ -199,7 +199,12 @@ private:
   * \returns updated iterator to the Buffer Status Report map
   */
   std::map<uint8_t, LteMacSapProvider::ReportBufferStatusParameters>::iterator UpdateBufferStatusReport (uint8_t lcid, uint32_t assignedBytes);
-
+  
+  /**
+  * \brief Checks the channel state and updates m_isChannelIdle 
+  */
+  void CheckChannelState (void);
+  
   MmWaveSidelinkPhySapUser* m_phySapUser; //!< Sidelink PHY SAP user
   MmWaveSidelinkPhySapProvider* m_phySapProvider; //!< Sidelink PHY SAP provider
   LteMacSapProvider* m_macSapProvider; //!< Sidelink MAC SAP provider
@@ -207,6 +212,8 @@ private:
   Ptr<mmwave::MmWavePhyMacCommon> m_phyMacConfig; //!< PHY and MAC configuration pointer
   Ptr<mmwave::MmWaveAmc> m_amc; //!< pointer to AMC instance
   bool m_useAmc; //!< set to true to use adaptive modulation and coding
+  bool m_useCSMA; //!< set to true to use millicar in CSMA mode. Otherwise millicar is used in preassigned slots mode
+  uint16_t m_backOffMax; //!< upper bound for backoff
   uint8_t m_mcs; //!< the MCS used to transmit the packets if AMC is not used
   uint16_t m_rnti; //!< radio network temporary identifier
   std::vector<uint16_t> m_sfAllocInfo; //!< defines the subframe allocation, m_sfAllocInfo[i] = RNTI of the device scheduled for slot i
@@ -214,7 +221,9 @@ private:
   std::map<uint16_t, std::vector<int>> m_slCqiReported; //!< map containing the <RNTI, CQI> pairs
   Callback<void, Ptr<Packet> > m_forwardUpCallback; //!< upward callback to the NetDevice
   std::map<uint8_t, LteMacSapProvider::ReportBufferStatusParameters> m_bufferStatusReportMap; //!< map containing the <LCID, buffer status in bits> pairs
-
+  bool m_isChannelIdle; //!< used to track the channel state
+  int64_t m_timeNextCheck;
+  int16_t m_vehiclesPerPlatoon; //!< number of vehicles in each platoon
   // trace sources
   TracedCallback<SlSchedulingCallback> m_schedulingTrace; //!< trace source returning information regarding the scheduling
 };

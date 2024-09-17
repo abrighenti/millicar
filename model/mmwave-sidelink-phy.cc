@@ -41,6 +41,12 @@ MacSidelinkMemberPhySapProvider::AddTransportBlock (Ptr<PacketBurst> pb, mmwave:
   m_phy->DoAddTransportBlock (pb, info);
 }
 
+bool
+MacSidelinkMemberPhySapProvider::IsChannelIdle (uint16_t rnti)
+{
+  return m_phy->GetSpectrumPhy()->IsChannelIdle(rnti);
+}
+
 void
 MacSidelinkMemberPhySapProvider::PrepareForReception (uint16_t rnti)
 {
@@ -58,6 +64,7 @@ MmWaveSidelinkPhy::MmWaveSidelinkPhy ()
   NS_LOG_FUNCTION (this);
   NS_FATAL_ERROR ("This constructor should not be called");
 }
+
 
 MmWaveSidelinkPhy::MmWaveSidelinkPhy (Ptr<MmWaveSidelinkSpectrumPhy> spectrumPhy, Ptr<mmwave::MmWavePhyMacCommon> confParams)
 {

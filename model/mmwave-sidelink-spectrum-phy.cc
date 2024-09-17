@@ -35,6 +35,8 @@
 #include <ns3/mmwave-vehicular-net-device.h>
 #include <ns3/mmwave-vehicular-antenna-array-model.h>
 
+#include <ns3/seq-ts-header.h>
+
 using namespace ns3;
 using namespace mmwave;
 using namespace millicar;
@@ -107,6 +109,12 @@ MmWaveSidelinkSpectrumPhy::GetTypeId (void)
                    TypeIdValue (MmWaveLteMiErrorModel::GetTypeId ()),
                    MakeTypeIdAccessor (&MmWaveSidelinkSpectrumPhy::SetErrorModelType),
                    MakeTypeIdChecker ())
+    .AddAttribute ("InterferenceThreshold",
+                   "Threshold to declare channel idle",
+                   DoubleValue(3.0e-17),
+                   MakeDoubleAccessor(&MmWaveSidelinkSpectrumPhy::m_interfThreshold),
+                   MakeDoubleChecker<double>(0.0, 1.0)
+                   )
   ;
 
   return tid;
@@ -153,6 +161,17 @@ void
 MmWaveSidelinkSpectrumPhy::SetMobility (Ptr<MobilityModel> m)
 {
   m_mobility = m;
+}
+
+bool
+MmWaveSidelinkSpectrumPhy::IsChannelIdle (uint16_t rnti)
+{
+
+  if(m_interferenceData->GetInterference() <= m_interfThreshold){
+    return true;
+  }else{
+    return false;
+  }
 }
 
 Ptr<MobilityModel>
@@ -257,6 +276,7 @@ MmWaveSidelinkSpectrumPhy::StartRx (Ptr<SpectrumSignalParameters> params)
     {
       // other type of signal that needs to be counted as interference
       m_interferenceData->AddSignal (params->psd, params->duration);
+      
     }
 }
 
@@ -281,6 +301,7 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
       // In this case, we assume that the device will synchronize with the first
       // received signal, while the other will act as interferers
       m_interferenceData->AddSignal (params->psd, params->duration);
+
       break;
     case IDLE:
       {
@@ -326,6 +347,7 @@ MmWaveSidelinkSpectrumPhy::StartRxData (Ptr<MmWaveSidelinkSpectrumSignalParamete
           NS_LOG_LOGIC (this << " not in sync with this signal (rnti="
               << params->destinationRnti  << ", rnti of the device="
               << thisDeviceRnti << ")");
+          
         }
         //m_rxControlMessageList.insert (m_rxControlMessageList.end (), params->ctrlMsgList.begin (), params->ctrlMsgList.end ());
       }
@@ -419,6 +441,7 @@ MmWaveSidelinkSpectrumPhy::EndRxData ()
            {
              continue;
            }
+                          
 
            // Do we need the LteRadioBearerTag also here to check the rnti? I don't think so.
            NS_ASSERT_MSG (!m_phyRxDataEndOkCallback.IsNull (), "First set the rx callback");
@@ -439,7 +462,7 @@ MmWaveSidelinkSpectrumPhy::EndRxData ()
   //   m_phyRxCtrlEndOkCallback (m_rxControlMessageList);
   // }
 
-  m_state = IDLE;
+  ChangeState (IDLE);
   m_rxTransportBlock.clear ();
   //m_rxControlMessageList.clear ();
 }
@@ -489,8 +512,8 @@ MmWaveSidelinkSpectrumPhy::StartTxDataFrames (Ptr<PacketBurst> pb,
     case IDLE:
       {
         NS_ASSERT (m_txPsd);
-
-        m_state = TX;
+        
+        ChangeState (TX);
         Ptr<MmWaveSidelinkSpectrumSignalParameters> txParams = Create<MmWaveSidelinkSpectrumSignalParameters> ();
         txParams->duration = duration;
         txParams->txPhy = this->GetObject<SpectrumPhy> ();
@@ -506,7 +529,7 @@ MmWaveSidelinkSpectrumPhy::StartTxDataFrames (Ptr<PacketBurst> pb,
         txParams->rbBitmap = rbBitmap;
 
         m_channel->StartTx (txParams);
-
+        
         // The end of the tranmission is reduced by 1 ns to avoid collision in case of a consecutive tranmission in the same slot.
         m_endTxEvent = Simulator::Schedule (duration - NanoSeconds(1.0), &MmWaveSidelinkSpectrumPhy::EndTx, this);
       }
@@ -558,7 +581,7 @@ MmWaveSidelinkSpectrumPhy::EndTx ()
 {
   NS_ASSERT (m_state == TX);
 
-  m_state = IDLE;
+  ChangeState (IDLE);
 }
 
 Ptr<SpectrumChannel>
